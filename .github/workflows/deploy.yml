@@ -27,7 +27,6 @@ jobs:
         run: npm test --silent
 
   deploy:
-    if: ${{ secrets.VERCEL_TOKEN != '' }}
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -61,7 +60,13 @@ jobs:
           # Stop the server
           kill $(cat .next.pid) || true
 
+      - name: Notify deploy skipped when VERCEL_TOKEN missing
+        if: ${{ secrets.VERCEL_TOKEN == '' }}
+        run: |
+          echo "VERCEL_TOKEN secret not found; skipping deployment to Vercel. Add the 'VERCEL_TOKEN' repository secret to enable automatic deploys."
+
       - name: Deploy to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         uses: amondnet/vercel-action@v20
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
