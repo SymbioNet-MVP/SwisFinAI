@@ -27,6 +27,7 @@ jobs:
         run: npm test --silent
 
   deploy:
+    if: ${{ secrets.VERCEL_TOKEN != '' }}
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -70,3 +71,15 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+  deploy_skipped_notice:
+    if: ${{ secrets.VERCEL_TOKEN == '' }}
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Notify deploy skipped
+        run: |
+          echo "VERCEL_TOKEN secret not found; skipping deployment to Vercel. Add the 'VERCEL_TOKEN' repository secret to enable automatic deploys."
