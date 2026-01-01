@@ -1,0 +1,72 @@
+name: Test and Deploy to Vercel
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test --silent
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Pre-deploy smoke check (start and verify)
+        run: |
+          # Start the built app in the background
+          npm run start &
+          echo $! > .next.pid
+          # Wait for the server to be ready (port 3000)
+          npx wait-on http://localhost:3000
+          # Hit the homepage, fail if non-OK
+          curl -f http://localhost:3000/ || (echo "Smoke test failed: homepage not available"; kill $(cat .next.pid) || true; exit 1)
+          # Stop the server
+          kill $(cat .next.pid) || true
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-args: '--prod'
+          working-directory: .
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
